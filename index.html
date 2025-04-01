@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>SVG Map - Захват территорий</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1 class="game-title">SVG Map - Захват территорий</h1>
+  </header>
+
+  <div class="game-container">
+    <!-- Левая часть: карта -->
+    <div id="map-container">
+      <!-- Подключаем svg через <object> -->
+      <object
+        id="svgMap"
+        data="assets/maps/world.svg"
+        type="image/svg+xml"
+        aria-label="Интерактивная карта мира для игры"
+      >
+        <!-- Fallback content -->
+        <p>Ваш браузер не поддерживает SVG. Попробуйте обновить браузер или использовать другой.</p>
+      </object>
+    </div>
+
+    <!-- Правая часть: панель управления -->
+    <div class="game-controls">
+      <!-- Текущий игрок -->
+      <div id="current-player" class="player-info player-1">
+        Игрок 1
+      </div>
+
+      <!-- Сообщение о ходе -->
+      <div class="status-message" id="turn-status" role="status" aria-live="polite">
+        Загрузка карты...
+      </div>
+
+      <!-- Контейнер с кубиком -->
+      <div class="dice-container">
+        <div id="dice" aria-label="Результат броска кубика">?</div>
+        <div class="game-buttons">
+          <button id="roll-btn" type="button">Бросить кубик</button>
+          <button id="end-turn-btn" type="button" disabled>Завершить ход</button>
+        </div>
+      </div>
+
+      <!-- Счёт игроков -->
+      <div class="players-list">
+        <h3>Счет игроков:</h3>
+        <div id="scores-container">
+          <!-- Заполняется динамически JavaScript -->
+          <div class="player-score">Игрок 1: 0</div>
+          <div class="player-score">Игрок 2: 0</div>
+          <div class="player-score">Игрок 3: 0</div>
+          <div class="player-score">Игрок 4: 0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

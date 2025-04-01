@@ -1,0 +1,367 @@
+/* Обнуление и базовые стили */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px; /* Базовый размер шрифта */
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #1a1a2e; /* Темно-синий фон */
+    color: #e6e6e6; /* Светлый текст */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    line-height: 1.6; /* Улучшенная читаемость */
+}
+
+/* Шапка */
+header {
+    background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); /* Градиент в шапке */
+    color: white;
+    padding: 1rem 0; /* Используем rem для масштабируемости */
+    text-align: center;
+    border-bottom: 1px solid #2d4059; /* Темно-синяя граница */
+    flex-shrink: 0; /* Шапка не должна сжиматься */
+}
+
+.game-title {
+    font-size: 1.5rem; /* Используем rem */
+    font-weight: 600; /* Немного жирнее */
+}
+
+/* Контейнер под карту и панель справа */
+.game-container {
+    display: flex;
+    flex: 1; /* Занимает все оставшееся место */
+    overflow: hidden; /* Предотвращает выход контента за пределы */
+}
+
+/* Левая часть: карта */
+#map-container {
+    flex: 3; /* Карта занимает больше места */
+    height: calc(100vh - 60px - 1rem * 2); /* Вычитаем высоту шапки и паддинги */
+    min-height: 300px; /* Минимальная высота для карты */
+    position: relative;
+    background-color: #1a1a2e; /* Фон контейнера карты */
+    display: flex; /* Центрируем SVG, если он меньше контейнера */
+    justify-content: center;
+    align-items: center;
+}
+
+#svgMap {
+    width: 100%;
+    height: 100%;
+    border: none;
+    object-fit: contain; /* Масштабирует SVG, сохраняя пропорции */
+}
+
+/* Правая часть: панель управления */
+.game-controls {
+    flex: 1; /* Панель занимает меньше места */
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem; /* Используем rem */
+    background: linear-gradient(135deg, #1b1b2f 0%, #162447 100%); /* Градиент для панели */
+    padding: 1.25rem; /* Используем rem */
+    border-left: 1px solid #2d4059;
+    overflow-y: auto; /* Прокрутка, если контент не помещается */
+    max-width: 350px; /* Максимальная ширина панели */
+    min-width: 280px; /* Минимальная ширина панели */
+}
+
+/* Информация об игроке */
+.player-info {
+    text-align: center;
+    padding: 1rem; /* Используем rem */
+    border-radius: 8px;
+    /* margin-bottom: 1rem; Убрано, используем gap в .game-controls */
+    transition: background 0.3s ease, border-color 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    font-weight: bold;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    font-size: 1.1rem; /* Немного крупнее */
+}
+
+/* Цвета игроков с градиентами */
+.player-1 { background: linear-gradient(135deg, #e63946 0%, #ff5e62 100%); border-color: #e63946; }
+.player-2 { background: linear-gradient(135deg, #3a86ff 0%, #4cc9f0 100%); border-color: #3a86ff; }
+.player-3 { background: linear-gradient(135deg, #2ec4b6 0%, #06d6a0 100%); border-color: #2ec4b6; }
+.player-4 { background: linear-gradient(135deg, #ffbe0b 0%, #ff9e00 100%); border-color: #ffbe0b; }
+
+/* Сообщение о ходе */
+.status-message {
+    padding: 1rem; /* Используем rem */
+    border-radius: 8px;
+    text-align: center;
+    background: rgba(30, 30, 60, 0.7); /* Полупрозрачный фон */
+    border: 1px solid #2d4059;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2); /* Внутренняя тень */
+    /* margin-bottom: 0.8rem; Убрано, используем gap */
+}
+
+/* Контейнер с кубиком */
+.dice-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem; /* Используем rem */
+    padding: 1.25rem; /* Используем rem */
+    background: rgba(26, 26, 46, 0.7);
+    border-radius: 10px;
+    border: 1px solid #303a52;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+#dice {
+    width: 80px;
+    height: 80px;
+    background-color: #fff;
+    border: 3px solid #2d4059;
+    border-radius: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.25rem; /* 36px / 16px = 2.25rem */
+    font-weight: bold;
+    color: #222;
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    user-select: none; /* Запретить выделение текста на кубике */
+}
+
+/* Анимация броска кубика */
+.rolling {
+    animation: rollAnimation 0.8s ease-out;
+}
+
+@keyframes rollAnimation {
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(90deg) scale(1.1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    75% { transform: rotate(270deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Анимация пульсации результата */
+.pulse-effect {
+    animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.9; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Кнопки */
+.game-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem; /* Используем rem */
+    width: 100%;
+}
+
+button {
+    padding: 0.875rem 1.25rem; /* 14px, 20px -> rem */
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem; /* 16px -> rem */
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    line-height: 1.2; /* Выравнивание текста кнопки */
+}
+
+button:focus-visible { /* Улучшение доступности - видимый фокус */
+    outline: 2px solid #8f94fb;
+    outline-offset: 2px;
+}
+
+#roll-btn {
+    background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+    box-shadow: 0 4px 8px rgba(78, 84, 200, 0.3);
+}
+
+#roll-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4348a8 0%, #7c80e6 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(78, 84, 200, 0.4);
+}
+
+#end-turn-btn {
+    background: linear-gradient(135deg, #e63946 0%, #ff5e62 100%);
+    box-shadow: 0 4px 8px rgba(230, 57, 70, 0.3);
+}
+
+#end-turn-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #c1121f 0%, #e63946 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(230, 57, 70, 0.4);
+}
+
+/* Стили для заблокированных кнопок */
+button:disabled {
+    background: #6c757d; /* Серый цвет */
+    color: #bdbdbd; /* Светло-серый текст */
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+/* Счёт игроков */
+.players-list {
+    /* margin-top: 1rem; Убрано, используем gap */
+    padding-top: 1rem;
+    border-top: 1px solid #2d4059; /* Разделитель */
+}
+
+.players-list h3 {
+    margin-bottom: 0.75rem; /* Отступ под заголовком */
+    font-size: 1.125rem; /* 18px -> rem */
+    color: #aab4c8; /* Светло-синий для заголовка */
+    font-weight: 600;
+}
+
+#scores-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* Отступ между записями счета */
+}
+
+.player-score {
+    padding: 0.5rem 0.625rem; /* 8px, 10px -> rem */
+    background-color: rgba(45, 64, 89, 0.3); /* Легкий фон */
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem; /* Немного меньше базового */
+    transition: background-color 0.3s ease;
+}
+
+/* Стиль для маркера цвета игрока */
+.player-score span {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    background-color: var(--player-color, #cccccc); /* Используем переменную, если нужно */
+    margin-right: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    vertical-align: middle;
+    flex-shrink: 0; /* Маркер не должен сжиматься */
+}
+
+/* Адаптивность */
+@media (max-width: 992px) {
+    .game-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow: visible; /* Убираем скрытие overflow для колонки */
+    }
+
+    #map-container {
+        flex: none;
+        height: 55vh; /* Относительная высота для карты */
+        min-height: 300px;
+        width: 100%; /* Карта на всю ширину */
+        order: 1; /* Карта сверху */
+        border-bottom: 1px solid #2d4059; /* Граница между картой и панелью */
+    }
+
+    .game-controls {
+        flex: none;
+        height: auto; /* Автоматическая высота */
+        max-width: none; /* На всю ширину */
+        width: 100%;
+        border-left: none;
+        border-top: none; /* Убираем верхнюю границу, т.к. есть нижняя у карты */
+        order: 2; /* Панель снизу */
+        overflow-y: visible; /* Убираем прокрутку панели */
+    }
+
+    /* Можно настроить горизонтальное расположение для экономии места */
+    .dice-container {
+        flex-direction: row;
+        justify-content: space-around;
+        align-items: center;
+        padding: 1rem;
+    }
+
+    .game-buttons {
+        flex-direction: row;
+        width: auto; /* Ширина по кнопкам */
+        gap: 1rem;
+    }
+    button {
+        padding: 0.75rem 1rem; /* Уменьшим паддинги кнопок */
+    }
+}
+
+@media (max-width: 600px) {
+    html {
+        font-size: 15px; /* Уменьшим базовый шрифт на маленьких экранах */
+    }
+    .game-title {
+        font-size: 1.25rem; /* Уменьшаем заголовок */
+    }
+    #map-container {
+        height: 50vh; /* Еще меньше места под карту */
+        min-height: 250px;
+    }
+    .dice-container {
+        flex-direction: column; /* Возвращаем колонку для кубика и кнопок */
+        align-items: center;
+        gap: 1rem;
+    }
+    .game-buttons {
+        flex-direction: column; /* Кнопки снова в колонку */
+        width: 100%; /* Растягиваем на всю ширину контейнера */
+        gap: 0.75rem;
+    }
+    #dice {
+        width: 70px; /* Уменьшаем кубик */
+        height: 70px;
+        font-size: 2rem;
+    }
+     button {
+        font-size: 0.95rem; /* Уменьшаем шрифт кнопок */
+    }
+    .game-controls {
+         padding: 1rem; /* Уменьшаем паддинги панели */
+         gap: 1rem;
+    }
+}
+
+@media (max-width: 400px) {
+     html {
+        font-size: 14px; /* Еще меньше базовый шрифт */
+    }
+     #map-container {
+        height: 45vh;
+        min-height: 200px;
+    }
+     #dice {
+        width: 60px;
+        height: 60px;
+        font-size: 1.8rem;
+    }
+     .player-info {
+        font-size: 1rem;
+        padding: 0.8rem;
+    }
+}
