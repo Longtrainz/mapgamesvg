@@ -1,0 +1,19 @@
+## Technical Design
+
+Always design code to be modular with components where possible, so that individual files do not get too large.
+
+## Expansion Guidelines
+
+When adding new features:
+1. Follow the existing component architecture
+2. Create new files for major new systems
+3. Extend existing classes rather than modifying them
+4. Add appropriate event emissions for cross-component communication
+5. Document new systems with clear comments
+6. Maintain consistent naming conventions
+7. Consider performance implications, especially for visual effects
+8. For multiplayer features, always consider:
+   - Server authority and validation
+   - Network bandwidth optimization
+   - State synchronization requirements
+   - Anti-cheat implications

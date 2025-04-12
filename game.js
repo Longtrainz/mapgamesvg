@@ -19,6 +19,85 @@ const playerScores = { 1: 0, 2: 0, 3: 0, 4: 0 };
 let countryOwners = {};
 const playerStartTerritories = {};
 
+// === Структура данных для смежных территорий ===
+const adjacencyMatrix = {};
+
+// === Функция для определения смежных территорий ===
+function findAdjacentTerritories(path1, path2) {
+    try {
+        const bbox1 = path1.getBBox();
+        const bbox2 = path2.getBBox();
+        
+        // Проверяем пересечение bounding boxes с небольшим допуском
+        const tolerance = 1;
+        if (!(bbox1.x > bbox2.x + bbox2.width + tolerance ||
+              bbox1.x + bbox1.width < bbox2.x - tolerance ||
+              bbox1.y > bbox2.y + bbox2.height + tolerance ||
+              bbox1.y + bbox1.height < bbox2.y - tolerance)) {
+            return true;
+        }
+    } catch (e) {
+        console.error("Error checking adjacency:", e);
+    }
+    return false;
+}
+
+// === Функция для построения матрицы смежности ===
+function buildAdjacencyMatrix() {
+    if (!svgDoc) return;
+    
+    const paths = Array.from(svgDoc.querySelectorAll("path[id]"));
+    
+    paths.forEach(path1 => {
+        const id1 = path1.id;
+        adjacencyMatrix[id1] = [];
+        
+        paths.forEach(path2 => {
+            const id2 = path2.id;
+            if (id1 !== id2 && findAdjacentTerritories(path1, path2)) {
+                adjacencyMatrix[id1].push(id2);
+            }
+        });
+    });
+    
+    console.log("Adjacency matrix built:", adjacencyMatrix);
+}
+
+// === Функция проверки возможности захвата территории ===
+function canCaptureTerritory(territoryId) {
+    // Если это первый ход игрока, разрешаем захват любой территории
+    if (playerScores[currentPlayer] === 0) return true;
+    
+    // Проверяем наличие смежных территорий, принадлежащих игроку
+    return adjacencyMatrix[territoryId]?.some(neighborId => 
+        countryOwners[neighborId] === currentPlayer
+    ) || false;
+}
+
+// === Функция подсветки доступных территорий ===
+function highlightAvailableTerritories() {
+    if (!canCaptureCountry || !svgDoc) return;
+    
+    // Сначала убираем все подсветки
+    svgDoc.querySelectorAll("path[id]").forEach(path => {
+        path.classList.remove('available-territory', 'unavailable-territory');
+    });
+    
+    // Если это не первый ход, подсвечиваем только доступные территории
+    Object.keys(countryOwners).forEach(territoryId => {
+        if (countryOwners[territoryId] === 0) {
+            const path = svgDoc.getElementById(territoryId);
+            if (path) {
+                if (canCaptureTerritory(territoryId)) {
+                    path.classList.add('available-territory');
+                } else {
+                    path.classList.add('unavailable-territory');
+                }
+            }
+        }
+    });
+}
+
 // === Переменные для зума/панорамирования ===
 let currentScale = 1;
 let currentTranslateX = 0;
@@ -312,6 +391,9 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log(`Initialized ${validCountryCount} countries.`);
             if (validCountryCount === 0) throw new Error("No countries with valid ID found!");
 
+            // --- Построение матрицы смежности ---
+            buildAdjacencyMatrix();
+
             // --- Стили ---
             let styleElem = svgDoc.getElementById('game-style');
             if (!styleElem) {
@@ -326,6 +408,8 @@ document.addEventListener("DOMContentLoaded", () => {
                path.dimmed { opacity: 0.4 !important; fill-opacity: 0.4 !important; }
                path.no-interaction { cursor: default; pointer-events: none; }
                path.no-interaction:hover { opacity: inherit; stroke-width: 0.5; stroke: #222; }
+               path.available-territory { stroke: #4CAF50; stroke-width: 2; cursor: pointer; }
+               path.unavailable-territory { opacity: 0.4; cursor: not-allowed; }
                #map-transform-group { transform-origin: 0 0; }
                svg { user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; }
              `;
@@ -449,43 +533,95 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log(`Клик ${countryId}. Owner: ${owner}. Захват ${canCaptureCountry}.`);
         }
     }
-    function rollDice() { /* ... */
+    function rollDice() {
         if (gameOver || !rollBtn || rollBtn.disabled) return;
-        if(diceEl) diceEl.textContent = "..."; if(diceEl) diceEl.classList.add("rolling");
-        rollBtn.disabled = true; if(endTurnBtn) endTurnBtn.disabled = true;
-        canCaptureCountry = false; if(turnStatus) turnStatus.textContent = "Бросаем кубик...";
+        if(diceEl) diceEl.textContent = "...";
+        if(diceEl) diceEl.classList.add("rolling");
+        rollBtn.disabled = true;
+        if(endTurnBtn) endTurnBtn.disabled = true;
+        canCaptureCountry = false;
+        if(turnStatus) turnStatus.textContent = "Бросаем кубик...";
+        
+        // Убираем подсветку территорий при броске
+        if(svgDoc) {
+            svgDoc.querySelectorAll("path[id]").forEach(path => {
+                path.classList.remove('available-territory', 'unavailable-territory');
+            });
+        }
+        
         setTimeout(() => {
             diceResult = isDebugMode ? 6 : Math.floor(Math.random() * 6) + 1;
             if(isDebugMode) console.log("Debug: Force dice = 6");
-            if(diceEl) diceEl.textContent = diceResult; if(diceEl) { diceEl.classList.remove("rolling"); diceEl.classList.add("pulse-effect"); }
+            if(diceEl) diceEl.textContent = diceResult;
+            if(diceEl) {
+                diceEl.classList.remove("rolling");
+                diceEl.classList.add("pulse-effect");
+            }
+            
             setTimeout(() => {
                 if(diceEl) diceEl.classList.remove("pulse-effect");
                 if (diceResult === 6) {
                     const hasFreeCountries = Object.values(countryOwners).some(o => o === 0);
-                    if(hasFreeCountries) { canCaptureCountry = true; if(turnStatus) turnStatus.textContent = "Выпала 6! Кликните по СВОБОДНОЙ стране для захвата или завершите ход."; }
-                    else { if(turnStatus) turnStatus.textContent = "Выпала 6, но нет свободных стран! Завершите ход."; }
-                } else { if(turnStatus) turnStatus.textContent = `Выпало ${diceResult}. Завершите ход.`; }
+                    if(hasFreeCountries) {
+                        canCaptureCountry = true;
+                        if(turnStatus) turnStatus.textContent = "Выпала 6! Кликните по СВОБОДНОЙ стране для захвата или завершите ход.";
+                        highlightAvailableTerritories(); // Подсвечиваем доступные территории
+                    } else {
+                        if(turnStatus) turnStatus.textContent = "Выпала 6, но нет свободных стран! Завершите ход.";
+                    }
+                } else {
+                    if(turnStatus) turnStatus.textContent = `Выпало ${diceResult}. Завершите ход.`;
+                }
                 if (!gameOver && endTurnBtn) endTurnBtn.disabled = false;
             }, 400);
         }, 800);
     }
-    function captureCountry(countryId, pathElem) { /* ... */
+    function captureCountry(countryId, pathElem) {
         if (!canCaptureCountry || gameOver) return;
-        if (countryOwners[countryId] !== 0) { if(turnStatus) turnStatus.textContent = `Страна ${countryId} уже захвачена Игроком ${countryOwners[countryId]}!`; return; }
+        
+        // Проверяем, свободна ли территория
+        if (countryOwners[countryId] !== 0) {
+            if(turnStatus) turnStatus.textContent = `Страна ${countryId} уже захвачена Игроком ${countryOwners[countryId]}!`;
+            return;
+        }
+        
+        // Проверяем возможность захвата территории
+        if (!canCaptureTerritory(countryId)) {
+            if(turnStatus) turnStatus.textContent = `Вы можете захватить только территорию, граничащую с вашими владениями!`;
+            return;
+        }
+        
         console.log(`Player ${currentPlayer} captures ${countryId}`);
-        countryOwners[countryId] = currentPlayer; playerScores[currentPlayer]++;
-        pathElem.style.fill = getPlayerColor(currentPlayer); pathElem.style.opacity = 1; pathElem.style.fillOpacity = 1;
+        countryOwners[countryId] = currentPlayer;
+        playerScores[currentPlayer]++;
+        pathElem.style.fill = getPlayerColor(currentPlayer);
+        pathElem.style.opacity = 1;
+        pathElem.style.fillOpacity = 1;
+        
         if(turnStatus) turnStatus.textContent = `Игрок ${currentPlayer} захватил ${countryId}! Завершите ход.`;
-        canCaptureCountry = false; updateScoresTable(); checkWinCondition();
-     }
-    function endTurn() { /* ... */
+        canCaptureCountry = false;
+        updateScoresTable();
+        checkWinCondition();
+    }
+    function endTurn() {
         if (gameOver || !endTurnBtn || endTurnBtn.disabled) return;
+        
+        // Убираем подсветку территорий при завершении хода
+        if(svgDoc) {
+            svgDoc.querySelectorAll("path[id]").forEach(path => {
+                path.classList.remove('available-territory', 'unavailable-territory');
+            });
+        }
+        
         currentPlayer = (currentPlayer % 4) + 1;
-        diceResult = 0; canCaptureCountry = false;
-        if(rollBtn) rollBtn.disabled = false; endTurnBtn.disabled = true;
-        if(diceEl) diceEl.textContent = "?"; if(turnStatus) turnStatus.textContent = `Ход Игрока ${currentPlayer}. Бросьте кубик!`;
+        diceResult = 0;
+        canCaptureCountry = false;
+        if(rollBtn) rollBtn.disabled = false;
+        endTurnBtn.disabled = true;
+        if(diceEl) diceEl.textContent = "?";
+        if(turnStatus) turnStatus.textContent = `Ход Игрока ${currentPlayer}. Бросьте кубик!`;
         updatePlayerPanel();
-     }
+    }
     function updatePlayerPanel() { /* ... */
         const colors = ["player-1", "player-2", "player-3", "player-4"];
         const playerInfoEl = document.getElementById("current-player");
