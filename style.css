@@ -365,3 +365,16 @@ button:disabled {
         padding: 0.8rem;
     }
 }
+
+path.capturable-enemy-territory {
+    stroke: #FF4444;
+    stroke-width: 3;
+    cursor: pointer;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { stroke-width: 3; }
+    50% { stroke-width: 4; }
+    100% { stroke-width: 3; }
+}

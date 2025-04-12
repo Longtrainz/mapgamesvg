@@ -65,13 +65,22 @@ function buildAdjacencyMatrix() {
 
 // === Функция проверки возможности захвата территории ===
 function canCaptureTerritory(territoryId) {
-    // Если это первый ход игрока, разрешаем захват любой территории
-    if (playerScores[currentPlayer] === 0) return true;
+    // Если это первый ход игрока, разрешаем захват любой незанятой территории
+    if (playerScores[currentPlayer] === 0) {
+        return countryOwners[territoryId] === 0;
+    }
     
     // Проверяем наличие смежных территорий, принадлежащих игроку
-    return adjacencyMatrix[territoryId]?.some(neighborId => 
+    const hasAdjacentOwnTerritory = adjacencyMatrix[territoryId]?.some(neighborId => 
         countryOwners[neighborId] === currentPlayer
     ) || false;
+
+    // Территория должна быть либо незанятой, либо принадлежать другому игроку
+    const isValidTarget = countryOwners[territoryId] === 0 || 
+                         (countryOwners[territoryId] !== currentPlayer && 
+                          countryOwners[territoryId] !== undefined);
+
+    return hasAdjacentOwnTerritory && isValidTarget;
 }
 
 // === Функция подсветки доступных территорий ===
@@ -80,20 +89,24 @@ function highlightAvailableTerritories() {
     
     // Сначала убираем все подсветки
     svgDoc.querySelectorAll("path[id]").forEach(path => {
-        path.classList.remove('available-territory', 'unavailable-territory');
+        path.classList.remove('available-territory', 'unavailable-territory', 'capturable-enemy-territory');
     });
     
-    // Если это не первый ход, подсвечиваем только доступные территории
+    // Проверяем все территории
     Object.keys(countryOwners).forEach(territoryId => {
-        if (countryOwners[territoryId] === 0) {
-            const path = svgDoc.getElementById(territoryId);
-            if (path) {
-                if (canCaptureTerritory(territoryId)) {
-                    path.classList.add('available-territory');
-                } else {
-                    path.classList.add('unavailable-territory');
-                }
+        const owner = countryOwners[territoryId];
+        const path = svgDoc.getElementById(territoryId);
+        if (!path) return;
+
+        if (canCaptureTerritory(territoryId)) {
+            // Если территория принадлежит другому игроку, подсвечиваем как вражескую
+            if (owner !== 0 && owner !== currentPlayer) {
+                path.classList.add('capturable-enemy-territory');
+            } else if (owner === 0) {
+                path.classList.add('available-territory');
             }
+        } else if (owner === 0) {
+            path.classList.add('unavailable-territory');
         }
     });
 }
@@ -410,6 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
                path.no-interaction:hover { opacity: inherit; stroke-width: 0.5; stroke: #222; }
                path.available-territory { stroke: #4CAF50; stroke-width: 2; cursor: pointer; }
                path.unavailable-territory { opacity: 0.4; cursor: not-allowed; }
+               path.capturable-enemy-territory { stroke: #FF0000; stroke-width: 2; cursor: pointer; }
                #map-transform-group { transform-origin: 0 0; }
                svg { user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; }
              `;
@@ -545,7 +559,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Убираем подсветку территорий при броске
         if(svgDoc) {
             svgDoc.querySelectorAll("path[id]").forEach(path => {
-                path.classList.remove('available-territory', 'unavailable-territory');
+                path.classList.remove('available-territory', 'unavailable-territory', 'capturable-enemy-territory');
             });
         }
         
@@ -579,26 +593,36 @@ document.addEventListener("DOMContentLoaded", () => {
     function captureCountry(countryId, pathElem) {
         if (!canCaptureCountry || gameOver) return;
         
-        // Проверяем, свободна ли территория
-        if (countryOwners[countryId] !== 0) {
-            if(turnStatus) turnStatus.textContent = `Страна ${countryId} уже захвачена Игроком ${countryOwners[countryId]}!`;
-            return;
-        }
-        
         // Проверяем возможность захвата территории
         if (!canCaptureTerritory(countryId)) {
             if(turnStatus) turnStatus.textContent = `Вы можете захватить только территорию, граничащую с вашими владениями!`;
             return;
         }
+
+        const previousOwner = countryOwners[countryId];
         
-        console.log(`Player ${currentPlayer} captures ${countryId}`);
+        // Захватываем территорию
+        console.log(`Player ${currentPlayer} captures ${countryId} from Player ${previousOwner}`);
         countryOwners[countryId] = currentPlayer;
         playerScores[currentPlayer]++;
+        
+        // Если территория была захвачена у другого игрока, уменьшаем его счет
+        if (previousOwner > 0) {
+            playerScores[previousOwner]--;
+        }
+        
         pathElem.style.fill = getPlayerColor(currentPlayer);
         pathElem.style.opacity = 1;
         pathElem.style.fillOpacity = 1;
         
-        if(turnStatus) turnStatus.textContent = `Игрок ${currentPlayer} захватил ${countryId}! Завершите ход.`;
+        if(turnStatus) {
+            if (previousOwner > 0) {
+                turnStatus.textContent = `Игрок ${currentPlayer} захватил ${countryId} у Игрока ${previousOwner}! Завершите ход.`;
+            } else {
+                turnStatus.textContent = `Игрок ${currentPlayer} захватил ${countryId}! Завершите ход.`;
+            }
+        }
+        
         canCaptureCountry = false;
         updateScoresTable();
         checkWinCondition();
@@ -609,7 +633,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Убираем подсветку территорий при завершении хода
         if(svgDoc) {
             svgDoc.querySelectorAll("path[id]").forEach(path => {
-                path.classList.remove('available-territory', 'unavailable-territory');
+                path.classList.remove('available-territory', 'unavailable-territory', 'capturable-enemy-territory');
             });
         }
         
